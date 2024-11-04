@@ -1463,6 +1463,7 @@ static int remove_lmb_by_index(uint32_t drc_index)
 
 	offset = sprintf(cmdbuf, "memory remove index 0x%x", drc_index);
 
+	return 0;
 	return do_kernel_dlpar_common(cmdbuf, offset,
 				      1 /* Don't report error */);
 }
