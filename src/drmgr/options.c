@@ -60,6 +60,12 @@ char *usr_p_option = NULL;
  */
 char *usr_t_option = NULL;
 
+/* 
+ * test configuration file. Specifying this file also implies "dry run"
+ * operationgs.
+ */
+char *test_option = NULL;
+
 /* user specified workaround for qemu pci dlpar */
 int pci_virtio = 0;
 

@@ -30,7 +30,7 @@
 
 #include "options.c"
 
-#define DRMGR_ARGS	"ac:d:Iimnp:P:Qq:Rrs:w:t:hCVH"
+#define DRMGR_ARGS	"ac:d:Iimnp:P:Qq:Rrs:w:t:hCVHT:"
 
 int output_level = 1; /* default to lowest output level */
 
@@ -264,6 +264,10 @@ int parse_options(int argc, char *argv[])
                         pci_virtio = 1;
                         break;
 
+		    case 'T':	/* test remove; load configuration and then remove */
+			test_option = optarg; /* file for test configuration */
+			break;
+			
 		    default:
 			say(ERROR, "Invalid option specified '%c'\n", optopt);
 			return -1;
