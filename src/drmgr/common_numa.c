@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <numa.h>
+#include <libconfig.h>
+#include <stdlib.h>
 
 #include "dr.h"
 #include "ofdt.h"
@@ -118,9 +120,102 @@ static int read_numa_topology(struct ppcnuma_topology *numa)
 	return rc;
 }
 
+static void
+create_lmbs(unsigned int sort, struct ppcnuma_node *node, int count)
+{
+	struct lmb_list_head *lmb_list = NULL;
+	struct dr_node *lmb = NULL;
+	int rc = 0;
+	static unsigned int drc_index = 0xdeadbeef;
+
+	lmb_list = zalloc(sizeof(*lmb_list));
+	if (lmb_list == NULL) {
+		say(DEBUG, "Could not allocate LMB list head\n");
+		return NULL;
+	}
+
+	lmb_list->sort = sort;
+
+	/* Add count LMBs to lmb_list and node */
+	for (int i = 0; i < count; i++) {
+		lmb = lmb_list_add(drc_index++, lmb_list);
+		if (lmb != NULL) {
+			/* Add to node */
+			lmb->lmb_numa_next = node->lmbs;
+			node->lmbs = lmb;
+			node->n_lmbs++;
+
+			if (node->n_cpus)
+				numa.lmb_count++;
+			else
+				numa.cpuless_lmb_count++;
+		} else {
+			/* FIXME */
+		}
+	}
+
+	return;
+}
+
+static int
+ppcnuma_get_config(struct ppcnuma_topology *numa, char *cfgfile)
+{
+	config_t             cfg;
+	int                  count;
+	int                  cpus;
+	int                  mem;
+	int                  nid;
+	struct ppcnuma_node *node;
+	config_setting_t *   nodes;
+
+
+	config_init(&cfg);
+
+	rc = config_read_file(&cfg, test_option);
+	if (rc != CONFIG_TRUE) {
+		(void) fprintf(stderr, "Error at line %d of file %s: %s\n",
+			       config_error_line(&cfg),
+			       config_error_file(&cfg), 
+			       config_error_text(&cfg));
+		config_destroy(&cfg);
+		return -1;
+	}
+
+	nodes = config_lookup(&cfg, "nodes");
+	if (nodes != NULL) {
+		count = config_setting_length(nodes);
+		for (int i = 0; i < count; i++) {
+
+			cpus = -1;
+			mem  = -1;
+			nid  = -1;
+
+			config_setting_lookup_int(node, "node", &nid);
+			config_setting_lookup(node, "cpus", &cpus);
+			config_setting_lookup(node, "mem", &mem);
+
+			if ((node = ppc_fetch_node(numa, nid)) == NULL) {
+				return -1;
+			}
+
+			node->n_cpus = cpus;
+			create_lmbs(node, mem);
+		}
+	}
+
+	numa_enabled = 1;
+
+	return 0;
+}
+
 int ppcnuma_get_topology(struct ppcnuma_topology *numa)
 {
 	int rc;
+
+	/* If testing, load topology from config file */
+	if (test_option) {
+		return ppcnuma_get_config(numa, test_option);
+	}
 
 	rc = numa_available();
 	if (rc < 0)

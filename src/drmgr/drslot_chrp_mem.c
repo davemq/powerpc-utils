@@ -1463,6 +1463,9 @@ static int remove_lmb_by_index(uint32_t drc_index)
 
 	offset = sprintf(cmdbuf, "memory remove index 0x%x", drc_index);
 
+	if (test_option)
+		return 0;
+
 	return do_kernel_dlpar_common(cmdbuf, offset,
 				      1 /* Don't report error */);
 }
@@ -1714,10 +1717,12 @@ static int numa_based_remove(uint32_t count)
 	 * Link the LMBs to their node
 	 * Update global counter
 	 */
-	lmb_list = get_lmbs(LMB_NORMAL_SORT);
-	if (lmb_list == NULL) {
-		clear_numa_lmb_links();
-		return -1;
+	if (!test_option) {
+		lmb_list = get_lmbs(LMB_NORMAL_SORT);
+		if (lmb_list == NULL) {
+			clear_numa_lmb_links();
+			return -1;
+		}
 	}
 
 	if (!numa.node_count) {
